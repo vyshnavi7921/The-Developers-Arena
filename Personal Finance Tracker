@@ -1,0 +1,164 @@
+
+import json
+import os
+import datetime
+
+# ==========================================
+# MODULE 1: CORE DATA (Expense Classes)
+# ==========================================
+class Expense:
+    def __init__(self, date, amount, category, description):
+        self.date = self.validate_date(date)
+        self.amount = self.validate_amount(amount)
+        self.category = category
+        self.description = description
+
+    @staticmethod
+    def validate_date(date_str):
+        try:
+            if not date_str:
+                return str(datetime.date.today())
+            datetime.datetime.strptime(date_str, '%Y-%m-%d')
+            return date_str
+        except ValueError:
+            return str(datetime.date.today())
+
+    @staticmethod
+    def validate_amount(amount):
+        try:
+            val = float(amount)
+            return val if val > 0 else 0.0
+        except (ValueError, TypeError):
+            return 0.0
+
+    def to_dict(self):
+        return {
+            "date": self.date,
+            "amount": self.amount,
+            "category": self.category,
+            "description": self.description
+        }
+
+class ExpenseManager:
+    def __init__(self):
+        self.expenses = []
+
+    def add_expense(self, expense):
+        self.expenses.append(expense)
+
+    def search_expenses(self, keyword):
+        return [e for e in self.expenses if keyword.lower() in e.description.lower() 
+                or keyword.lower() in e.category.lower()]
+
+# ==========================================
+# MODULE 2: FILE HANDLING (Persistence)
+# ==========================================
+DATA_FILE = "finance_data.json"
+
+def save_to_file(expenses):
+    try:
+        with open(DATA_FILE, 'w') as f:
+            json.dump([e.to_dict() for e in expenses], f, indent=4)
+    except IOError as e:
+        print(f"Error saving data: {e}")
+
+def load_from_file():
+    if not os.path.exists(DATA_FILE):
+        return []
+    try:
+        with open(DATA_FILE, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return []
+
+# ==========================================
+# MODULE 3: REPORTS (Visualization)
+# ==========================================
+def generate_report(expenses):
+    if not expenses:
+        print("\n[!] No expenses found to generate a report.")
+        return
+
+    category_totals = {}
+    for e in expenses:
+        category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
+
+    print("\n" + "="*45)
+    print(f"{'CATEGORY':<15} | {'AMOUNT':<10} | {'VISUALIZATION'}")
+    print("-" * 45)
+    
+    for cat, total in category_totals.items():
+        # Text-based bar chart: 1 '#' per 20 units
+        bar = "#" * int(total // 20)
+        print(f"{cat:<15} | ${total:>8.2f} | {bar}")
+    
+    print("-" * 45)
+    print(f"TOTAL EXPENDITURE: ${sum(category_totals.values()):.2f}")
+    print("="*45)
+
+# ==========================================
+# MODULE 4: MAIN APPLICATION (UI)
+# ==========================================
+def main():
+    manager = ExpenseManager()
+    
+    # Load existing data on startup
+    saved_items = load_from_file()
+    for item in saved_items:
+        manager.add_expense(Expense(item['date'], item['amount'], item['category'], item['description']))
+
+    while True:
+        print("\n--- PERSONAL FINANCE TRACKER ---")
+        print("1. Add New Expense")
+        print("2. View All Expenses")
+        print("3. Search & Filter")
+        print("4. Monthly Report & Stats")
+        print("5. Backup Data (Save)")
+        print("6. Exit")
+        
+        choice = input("\nSelect an option (1-6): ")
+
+        if choice == '1':
+            print("\n(Enter date as YYYY-MM-DD or leave blank for today)")
+            date_in = input("Date: ")
+            try:
+                amt_in = input("Amount: ")
+                cat_in = input("Category (e.g., Food, Travel): ")
+                desc_in = input("Description: ")
+                
+                new_exp = Expense(date_in, amt_in, cat_in, desc_in)
+                manager.add_expense(new_exp)
+                save_to_file(manager.expenses)
+                print("✔ Expense Added and Saved!")
+            except Exception as e:
+                print(f"✘ Error adding expense: {e}")
+
+        elif choice == '2':
+            print(f"\n{'Date':<12} | {'Category':<12} | {'Amount':<10} | {'Description'}")
+            print("-" * 65)
+            for e in manager.expenses:
+                print(f"{e.date:<12} | {e.category:<12} | ${e.amount:<9.2f} | {e.description}")
+
+        elif choice == '3':
+            query = input("Enter category or description keyword: ")
+            results = manager.search_expenses(query)
+            print(f"\nFound {len(results)} results:")
+            for r in results:
+                print(f"{r.date} | {r.category} | ${r.amount} | {r.description}")
+
+        elif choice == '4':
+            generate_report(manager.expenses)
+
+        elif choice == '5':
+            save_to_file(manager.expenses)
+            print("✔ Backup successful.")
+
+        elif choice == '6':
+            save_to_file(manager.expenses)
+            print("Exiting... Data saved. Goodbye!")
+            break
+        else:
+            print("Invalid choice, please select 1-6.")
+
+if __name__ == "__main__":
+    main()
