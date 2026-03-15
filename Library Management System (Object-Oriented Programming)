@@ -1,0 +1,309 @@
+
+
+import json
+import os
+from datetime import datetime, timedelta
+
+
+DATA_FILE = "library_data.json"
+
+
+# ======================================================
+# BOOK CLASS
+# ======================================================
+
+class Book:
+    """Represents a book in the library."""
+
+    def __init__(self, title, author, isbn, year=None):
+        self.title = title
+        self.author = author
+        self.isbn = isbn
+        self.year = year
+        self.available = True
+        self.borrowed_by = None
+        self.due_date = None
+
+    def check_out(self, member_id):
+        """Check out the book to a member."""
+        if not self.available:
+            return False, "Book is already borrowed."
+
+        self.available = False
+        self.borrowed_by = member_id
+        self.due_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+
+        return True, f"Book borrowed successfully. Due date: {self.due_date}"
+
+    def return_book(self):
+        """Return the book to the library."""
+        if self.available:
+            return False, "Book is already available."
+
+        overdue = self.is_overdue()
+
+        self.available = True
+        self.borrowed_by = None
+        self.due_date = None
+
+        if overdue:
+            return True, "Book returned (was overdue)."
+        return True, "Book returned successfully."
+
+    def is_overdue(self):
+        """Check if the book is overdue."""
+        if self.due_date and not self.available:
+            due = datetime.strptime(self.due_date, "%Y-%m-%d")
+            return datetime.now() > due
+        return False
+
+    def to_dict(self):
+        """Convert object to dictionary."""
+        return self.__dict__
+
+    @classmethod
+    def from_dict(cls, data):
+        """Create book from dictionary."""
+        book = cls(data["title"], data["author"], data["isbn"], data.get("year"))
+        book.available = data["available"]
+        book.borrowed_by = data.get("borrowed_by")
+        book.due_date = data.get("due_date")
+        return book
+
+    def __str__(self):
+        status = "Available" if self.available else f"Borrowed by {self.borrowed_by}"
+        return f"{self.title} by {self.author} | ISBN: {self.isbn} | {status}"
+
+
+# ======================================================
+# MEMBER CLASS
+# ======================================================
+
+class Member:
+    """Represents a library member."""
+
+    MAX_BORROW_LIMIT = 5
+
+    def __init__(self, name, member_id):
+        self.name = name
+        self.member_id = member_id
+        self.borrowed_books = []
+
+    def borrow_book(self, isbn):
+        """Add book to member borrow list."""
+        if len(self.borrowed_books) >= self.MAX_BORROW_LIMIT:
+            return False, "Borrow limit reached."
+
+        self.borrowed_books.append(isbn)
+        return True, "Book added to member account."
+
+    def return_book(self, isbn):
+        """Remove book from member borrow list."""
+        if isbn in self.borrowed_books:
+            self.borrowed_books.remove(isbn)
+            return True, "Book removed from member account."
+
+        return False, "Book not found in borrowed list."
+
+    def to_dict(self):
+        """Convert member to dictionary."""
+        return self.__dict__
+
+    @classmethod
+    def from_dict(cls, data):
+        member = cls(data["name"], data["member_id"])
+        member.borrowed_books = data.get("borrowed_books", [])
+        return member
+
+    def __str__(self):
+        return f"{self.name} (ID: {self.member_id}) - Borrowed: {len(self.borrowed_books)} books"
+
+
+# ======================================================
+# LIBRARY CLASS
+# ======================================================
+
+class Library:
+    """Manages books and members."""
+
+    def __init__(self):
+        self.books = {}
+        self.members = {}
+
+    def add_book(self, book):
+        self.books[book.isbn] = book
+
+    def register_member(self, member):
+        self.members[member.member_id] = member
+
+    def find_book(self, keyword):
+        """Search books by title, author or ISBN."""
+        results = []
+
+        for book in self.books.values():
+            if (keyword.lower() in book.title.lower() or
+                    keyword.lower() in book.author.lower() or
+                    keyword == book.isbn):
+                results.append(book)
+
+        return results
+
+    def borrow_book(self, member_id, isbn):
+
+        if member_id not in self.members:
+            return "Member not found."
+
+        if isbn not in self.books:
+            return "Book not found."
+
+        book = self.books[isbn]
+        member = self.members[member_id]
+
+        success, message = book.check_out(member_id)
+
+        if success:
+            member.borrow_book(isbn)
+
+        return message
+
+    def return_book(self, member_id, isbn):
+
+        if member_id not in self.members or isbn not in self.books:
+            return "Invalid member or book."
+
+        book = self.books[isbn]
+        member = self.members[member_id]
+
+        success, message = book.return_book()
+
+        if success:
+            member.return_book(isbn)
+
+        return message
+
+    def statistics(self):
+        total = len(self.books)
+        available = sum(1 for b in self.books.values() if b.available)
+
+        print("\nLibrary Statistics")
+        print("------------------")
+        print("Total Books:", total)
+        print("Available Books:", available)
+        print("Borrowed Books:", total - available)
+
+
+# ======================================================
+# FILE OPERATIONS
+# ======================================================
+
+def save_data(library):
+
+    data = {
+        "books": [b.to_dict() for b in library.books.values()],
+        "members": [m.to_dict() for m in library.members.values()]
+    }
+
+    with open(DATA_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def load_data(library):
+
+    if not os.path.exists(DATA_FILE):
+        return
+
+    with open(DATA_FILE, "r") as file:
+        data = json.load(file)
+
+    for b in data["books"]:
+        book = Book.from_dict(b)
+        library.add_book(book)
+
+    for m in data["members"]:
+        member = Member.from_dict(m)
+        library.register_member(member)
+
+
+# ======================================================
+# USER INTERFACE
+# ======================================================
+
+def menu():
+
+    library = Library()
+    load_data(library)
+
+    while True:
+
+        print("\n========== LIBRARY MANAGEMENT ==========")
+        print("1. Add Book")
+        print("2. Register Member")
+        print("3. Borrow Book")
+        print("4. Return Book")
+        print("5. Search Book")
+        print("6. View Statistics")
+        print("7. Save & Exit")
+
+        choice = input("Select option: ")
+
+        if choice == "1":
+
+            title = input("Title: ")
+            author = input("Author: ")
+            isbn = input("ISBN: ")
+            year = input("Year: ")
+
+            library.add_book(Book(title, author, isbn, year))
+            print("Book added successfully.")
+
+        elif choice == "2":
+
+            name = input("Member Name: ")
+            member_id = input("Member ID: ")
+
+            library.register_member(Member(name, member_id))
+            print("Member registered.")
+
+        elif choice == "3":
+
+            member_id = input("Member ID: ")
+            isbn = input("Book ISBN: ")
+
+            print(library.borrow_book(member_id, isbn))
+
+        elif choice == "4":
+
+            member_id = input("Member ID: ")
+            isbn = input("Book ISBN: ")
+
+            print(library.return_book(member_id, isbn))
+
+        elif choice == "5":
+
+            keyword = input("Search keyword: ")
+            results = library.find_book(keyword)
+
+            if not results:
+                print("No books found.")
+            else:
+                for book in results:
+                    print(book)
+
+        elif choice == "6":
+            library.statistics()
+
+        elif choice == "7":
+            save_data(library)
+            print("Data saved. Exiting...")
+            break
+
+        else:
+            print("Invalid choice.")
+
+
+# ======================================================
+# PROGRAM ENTRY POINT
+# ======================================================
+
+if __name__ == "__main__":
+    menu()
