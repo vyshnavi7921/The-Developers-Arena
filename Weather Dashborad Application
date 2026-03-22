@@ -1,0 +1,66 @@
+import requests
+
+# 🔑 Replace with your API key
+API_KEY = "your_openweathermap_api_key"
+
+def get_weather(city):
+    try:
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": "City not found"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def parse_weather(data):
+    if "error" in data:
+        return data
+
+    try:
+        return {
+            "city": data["name"],
+            "temperature": data["main"]["temp"],
+            "humidity": data["main"]["humidity"],
+            "wind_speed": data["wind"]["speed"],
+            "description": data["weather"][0]["description"]
+        }
+    except:
+        return {"error": "Data parsing failed"}
+
+
+def display_weather(info):
+    if "error" in info:
+        print("❌ Error:", info["error"])
+        return
+
+    print("\n🌤 Weather Report")
+    print("---------------------------")
+    print(f"City        : {info['city']}")
+    print(f"Temperature : {info['temperature']} °C")
+    print(f"Humidity    : {info['humidity']} %")
+    print(f"Wind Speed  : {info['wind_speed']} m/s")
+    print(f"Condition   : {info['description']}")
+
+
+def main():
+    print("🌍 Weather Dashboard Application")
+
+    while True:
+        city = input("\nEnter city name (or 'exit'): ")
+
+        if city.lower() == "exit":
+            print("👋 Exiting program...")
+            break
+
+        raw_data = get_weather(city)
+        parsed_data = parse_weather(raw_data)
+        display_weather(parsed_data)
+
+
+if __name__ == "__main__":
+    main()
