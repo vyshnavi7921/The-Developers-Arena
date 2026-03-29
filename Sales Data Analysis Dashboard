@@ -1,0 +1,130 @@
+# Sales Data Analysis Dashboard
+# Developed by: Pegada Vyshnavi
+# Description: This program analyzes sales data, performs cleaning,
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+class SalesAnalyzer:
+
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.data = None
+
+    # Step 1: Load Data
+    def load_data(self):
+        try:
+            self.data = pd.read_csv(self.file_path)
+            print("\nData loaded successfully!\n")
+        except Exception as e:
+            print("Error loading file:", e)
+
+    # Step 2: Explore Data
+    def explore_data(self):
+        print("\n--- Dataset Info ---")
+        print(self.data.info())
+
+        print("\n--- First 5 Rows ---")
+        print(self.data.head())
+
+        print("\n--- Summary Statistics ---")
+        print(self.data.describe())
+
+    # Step 3: Clean Data
+    def clean_data(self):
+        print("\nCleaning data...")
+
+        # Remove duplicates
+        self.data.drop_duplicates(inplace=True)
+
+        # Handle missing values
+        self.data.fillna(0, inplace=True)
+
+        # Convert Date column to datetime
+        if 'Date' in self.data.columns:
+            self.data['Date'] = pd.to_datetime(self.data['Date'])
+
+        print("Data cleaning completed!")
+
+    # Step 4: Basic Analysis
+    def basic_analysis(self):
+        print("\n--- Basic Analysis ---")
+
+        # Total Sales
+        total_sales = self.data['Sales'].sum()
+        print("Total Sales:", total_sales)
+
+        # Average Sales
+        avg_sales = self.data['Sales'].mean()
+        print("Average Sales:", avg_sales)
+
+        # Top Products
+        if 'Product' in self.data.columns:
+            top_products = self.data.groupby('Product')['Sales'].sum().sort_values(ascending=False)
+            print("\nTop Selling Products:")
+            print(top_products.head())
+
+    # Step 5: Advanced Analysis
+    def advanced_analysis(self):
+        print("\n--- Advanced Analysis ---")
+
+        if 'Date' in self.data.columns:
+            self.data['Month'] = self.data['Date'].dt.to_period('M')
+
+            monthly_sales = self.data.groupby('Month')['Sales'].sum()
+            print("\nMonthly Sales:")
+            print(monthly_sales)
+
+            growth_rate = monthly_sales.pct_change() * 100
+            print("\nMonthly Growth Rate (%):")
+            print(growth_rate)
+
+    # Step 6: Visualization
+    def visualize(self):
+        print("\nGenerating charts...")
+
+        # Line Chart - Sales Trend
+        if 'Date' in self.data.columns:
+            sales_trend = self.data.groupby('Date')['Sales'].sum()
+            sales_trend.plot(title="Sales Trend")
+            plt.show()
+
+        # Bar Chart - Monthly Sales
+        if 'Month' in self.data.columns:
+            monthly_sales = self.data.groupby('Month')['Sales'].sum()
+            monthly_sales.plot(kind='bar', title="Monthly Sales")
+            plt.show()
+
+        # Pie Chart - Product Distribution
+        if 'Product' in self.data.columns:
+            product_sales = self.data.groupby('Product')['Sales'].sum()
+            product_sales.plot(kind='pie', autopct='%1.1f%%', title="Product Distribution")
+            plt.ylabel('')
+            plt.show()
+
+    # Step 7: Save Results
+    def save_results(self):
+        self.data.to_csv("cleaned_sales_data.csv", index=False)
+        print("\nCleaned data saved successfully!")
+
+
+# -------- Main Program --------
+
+def main():
+    file_path = input("Enter CSV file path: ")
+
+    analyzer = SalesAnalyzer(file_path)
+
+    analyzer.load_data()
+    analyzer.explore_data()
+    analyzer.clean_data()
+    analyzer.basic_analysis()
+    analyzer.advanced_analysis()
+    analyzer.visualize()
+    analyzer.save_results()
+
+
+if __name__ == "__main__":
+    main()
