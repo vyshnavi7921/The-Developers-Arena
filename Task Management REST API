@@ -1,0 +1,93 @@
+# Task Management REST API
+
+
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
+db = SQLAlchemy(app)
+
+# ------------------ Models ------------------
+
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500))
+    status = db.Column(db.String(50), default="pending")
+
+# ------------------ Routes ------------------
+
+# GET all tasks
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    tasks = Task.query.all()
+    output = []
+
+    for task in tasks:
+        output.append({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "status": task.status
+        })
+
+    return jsonify(output), 200
+
+# GET single task
+@app.route('/tasks/<int:id>', methods=['GET'])
+def get_task(id):
+    task = Task.query.get_or_404(id)
+
+    return jsonify({
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "status": task.status
+    }), 200
+
+# CREATE task
+@app.route('/tasks', methods=['POST'])
+def create_task():
+    data = request.get_json()
+
+    new_task = Task(
+        title=data['title'],
+        description=data.get('description'),
+        status=data.get('status', 'pending')
+    )
+
+    db.session.add(new_task)
+    db.session.commit()
+
+    return jsonify({"message": "Task created successfully"}), 201
+
+# UPDATE task
+@app.route('/tasks/<int:id>', methods=['PUT'])
+def update_task(id):
+    task = Task.query.get_or_404(id)
+    data = request.get_json()
+
+    task.title = data.get('title', task.title)
+    task.description = data.get('description', task.description)
+    task.status = data.get('status', task.status)
+
+    db.session.commit()
+
+    return jsonify({"message": "Task updated successfully"}), 200
+
+# DELETE task
+@app.route('/tasks/<int:id>', methods=['DELETE'])
+def delete_task(id):
+    task = Task.query.get_or_404(id)
+
+    db.session.delete(task)
+    db.session.commit()
+
+    return jsonify({"message": "Task deleted successfully"}), 200
+
+# ------------------ Run App ------------------
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
