@@ -1,0 +1,95 @@
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app = Flask(__name__)
+app.secret_key = "secret123"
+
+# Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
+db = SQLAlchemy(app)
+
+# Models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(200))
+
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200))
+    content = db.Column(db.Text)
+    user_id = db.Column(db.Integer)
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text)
+    post_id = db.Column(db.Integer)
+
+# Home Page
+@app.route('/')
+def home():
+    posts = Post.query.all()
+    return render_template('home.html', posts=posts)
+
+# Register
+@app.route('/register', methods=['GET','POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'])
+
+        user = User(username=username, password=password)
+        db.session.add(user)
+        db.session.commit()
+        return redirect('/login')
+
+    return render_template('register.html')
+
+# Login
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        user = User.query.filter_by(username=request.form['username']).first()
+
+        if user and check_password_hash(user.password, request.form['password']):
+            session['user'] = user.username
+            return redirect('/')
+    
+    return render_template('login.html')
+
+# Logout
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect('/')
+
+# Create Post
+@app.route('/create', methods=['GET','POST'])
+def create():
+    if request.method == 'POST':
+        post = Post(
+            title=request.form['title'],
+            content=request.form['content']
+        )
+        db.session.add(post)
+        db.session.commit()
+        return redirect('/')
+    return render_template('create.html')
+
+# View Post
+@app.route('/post/<int:id>', methods=['GET','POST'])
+def post(id):
+    post = Post.query.get(id)
+    comments = Comment.query.filter_by(post_id=id).all()
+
+    if request.method == 'POST':
+        comment = Comment(content=request.form['comment'], post_id=id)
+        db.session.add(comment)
+        db.session.commit()
+
+    return render_template('post.html', post=post, comments=comments)
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
