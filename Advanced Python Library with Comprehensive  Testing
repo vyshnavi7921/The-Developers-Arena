@@ -1,0 +1,147 @@
+# -----------------------------------------------
+# Project: Advanced Python Library
+# Name: Pegada Vyshnavi
+# Description:
+# This program demonstrates advanced Python concepts:
+# - Decorators
+# - Generators
+# - Context Managers
+# - Type Hints
+# - Custom Exceptions
+# -----------------------------------------------
+
+import time
+from functools import wraps
+
+
+# -----------------------------------------------
+# DECORATOR: Measures execution time of functions
+# -----------------------------------------------
+def timing_decorator(func):
+    """
+    This decorator calculates how long a function takes to execute.
+    It wraps the original function and prints execution time.
+    """
+
+    @wraps(func)  # Preserves original function metadata
+    def wrapper(*args, **kwargs):
+        start_time = time.time()   # Record start time
+
+        result = func(*args, **kwargs)  # Execute original function
+
+        end_time = time.time()     # Record end time
+
+        # Calculate and display execution time
+        print(f"[INFO] '{func.__name__}' executed in {end_time - start_time:.4f} seconds")
+
+        return result
+
+    return wrapper
+
+
+# -----------------------------------------------
+# GENERATOR: Efficient number generator
+# -----------------------------------------------
+def number_generator(limit: int):
+    """
+    Generates numbers from 0 to (limit - 1)
+    using 'yield' for memory efficiency.
+    """
+    for i in range(limit):
+        yield i   # Returns one value at a time
+
+
+# -----------------------------------------------
+# CONTEXT MANAGER: Handles file operations safely
+# -----------------------------------------------
+class FileManager:
+    """
+    Custom context manager for file handling.
+    Ensures file is properly opened and closed.
+    """
+
+    def __init__(self, filename: str, mode: str):
+        self.filename = filename
+        self.mode = mode
+
+    def __enter__(self):
+        """
+        Automatically called when entering 'with' block.
+        Opens the file.
+        """
+        print("[INFO] Opening file...")
+        self.file = open(self.filename, self.mode)
+        return self.file
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Automatically called when exiting 'with' block.
+        Closes the file safely.
+        """
+        print("[INFO] Closing file...")
+        self.file.close()
+
+
+# -----------------------------------------------
+# CUSTOM EXCEPTION: User-defined error handling
+# -----------------------------------------------
+class CustomError(Exception):
+    """
+    Custom exception class for handling specific errors.
+    """
+    pass
+
+
+# -----------------------------------------------
+# FUNCTION WITH TYPE HINTS
+# -----------------------------------------------
+@timing_decorator
+def add_numbers(a: int, b: int) -> int:
+    """
+    Adds two integers and returns the result.
+
+    Parameters:
+    a (int): First number
+    b (int): Second number
+
+    Returns:
+    int: Sum of a and b
+    """
+    return a + b
+
+
+# -----------------------------------------------
+# MAIN FUNCTION (Program Execution Starts Here)
+# -----------------------------------------------
+def main():
+    """
+    Main function to demonstrate all features.
+    """
+
+    print("=" * 50)
+    print("   ADVANCED PYTHON LIBRARY DEMO")
+    print("=" * 50)
+
+    # ---- Using Decorator Function ----
+    print("\n[STEP 1] Testing Decorator Function")
+    result = add_numbers(10, 20)
+    print(f"Result: {result}")
+
+    # ---- Using Generator ----
+    print("\n[STEP 2] Testing Generator")
+    for num in number_generator(5):
+        print(f"Generated Number: {num}")
+
+    # ---- Using Context Manager ----
+    print("\n[STEP 3] Testing Context Manager")
+    with FileManager("output.txt", "w") as file:
+        file.write("Hello Vyshnavi! This is written using a context manager.")
+
+    print("\nProgram executed successfully!")
+
+
+# -----------------------------------------------
+# ENTRY POINT
+# -----------------------------------------------
+if __name__ == "__main__":
+    main()
