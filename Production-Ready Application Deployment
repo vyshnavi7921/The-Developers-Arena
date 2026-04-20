@@ -1,0 +1,135 @@
+"""
+PROJECT: Production-Ready Python Application Deployment
+
+FEATURES INCLUDED:
+- Flask API
+- Modular routing
+- Logging system
+- Environment configuration
+- Docker support (separate file)
+- CI/CD ready
+- Unit testing
+
+Author: Vyshnavi Pegada
+"""
+
+# ==============================
+# IMPORTS
+# ==============================
+from flask import Flask, jsonify, request, Blueprint
+import logging
+import os
+
+# ==============================
+# CONFIGURATION
+# ==============================
+class Config:
+    """
+    Handles environment variables and settings
+    """
+    DEBUG = os.getenv("DEBUG", "True") == "True"
+    SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
+
+
+# ==============================
+# LOGGER SETUP
+# ==============================
+def setup_logger(app):
+    """
+    Configures logging for the application
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    app.logger.info("Logger initialized successfully")
+
+
+# ==============================
+# ROUTES (API)
+# ==============================
+api = Blueprint("api", __name__)
+
+@api.route("/", methods=["GET"])
+def home():
+    """
+    Home endpoint
+    """
+    return jsonify({
+        "message": "Welcome to Production Ready Application"
+    })
+
+
+@api.route("/health", methods=["GET"])
+def health():
+    """
+    Health check endpoint
+    Used to verify application status
+    """
+    return jsonify({
+        "status": "running"
+    })
+
+
+@api.route("/data", methods=["POST"])
+def receive_data():
+    """
+    Accepts JSON data and returns it
+    """
+    data = request.json
+
+    return jsonify({
+        "message": "Data received successfully",
+        "data": data
+    })
+
+
+# ==============================
+# APPLICATION FACTORY
+# ==============================
+def create_app():
+    """
+    Creates and configures Flask app
+    """
+    app = Flask(__name__)
+    app.config.from_object(Config)
+
+    # Register routes
+    app.register_blueprint(api)
+
+    # Setup logging
+    setup_logger(app)
+
+    return app
+
+
+# ==============================
+# MAIN ENTRY POINT
+# ==============================
+if __name__ == "__main__":
+    app = create_app()
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+# ==============================
+# SAMPLE TEST CASES
+# ==============================
+"""
+Run using: pytest
+
+import pytest
+
+@pytest.fixture
+def client():
+    app = create_app()
+    app.testing = True
+    return app.test_client()
+
+def test_home(client):
+    response = client.get("/")
+    assert response.status_code == 200
+
+def test_health(client):
+    response = client.get("/health")
+    assert response.json["status"] == "running"
+"""
