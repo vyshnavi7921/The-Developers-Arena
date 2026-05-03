@@ -1,0 +1,156 @@
+"""
+Full-Stack Python Task Manager (Single File Project)
+---------------------------------------------------
+This project demonstrates:
+✔ Backend (Flask API)
+✔ Frontend (HTML + CSS + JS inside Python)
+✔ Clean code with comments
+✔ Ready for Docker & Deployment
+"""
+
+from flask import Flask, request, jsonify, render_template_string
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# In-memory database (for demo purpose)
+tasks = []
+
+# ---------------------------------------
+# HTML TEMPLATE (Frontend inside Python)
+# ---------------------------------------
+HTML_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Manager</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            text-align: center;
+            margin-top: 50px;
+        }
+        h1 {
+            color: #333;
+        }
+        input {
+            padding: 10px;
+            width: 200px;
+        }
+        button {
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        ul {
+            list-style: none;
+        }
+        li {
+            background: white;
+            margin: 10px auto;
+            padding: 10px;
+            width: 300px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>📝 Task Manager</h1>
+
+<form id="taskForm">
+    <input type="text" id="taskInput" placeholder="Enter task" required>
+    <button type="submit">Add</button>
+</form>
+
+<ul id="taskList">
+    {% for task in tasks %}
+        <li>{{ task }}</li>
+    {% endfor %}
+</ul>
+
+<script>
+// Handle form submit
+document.getElementById("taskForm").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    let task = document.getElementById("taskInput").value;
+
+    fetch('/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'task=' + task
+    })
+    .then(res => res.json())
+    .then(data => {
+        location.reload();
+    });
+});
+</script>
+
+</body>
+</html>
+"""
+
+# ---------------------------------------
+# ROUTES
+# ---------------------------------------
+
+@app.route('/')
+def home():
+    """
+    Home page route
+    Displays all tasks
+    """
+    return render_template_string(HTML_PAGE, tasks=tasks)
+
+
+@app.route('/add', methods=['POST'])
+def add_task():
+    """
+    Add a new task
+    """
+    task = request.form.get('task')
+
+    if not task:
+        return jsonify({"error": "Task cannot be empty"}), 400
+
+    tasks.append(task)
+
+    return jsonify({
+        "message": "Task added successfully",
+        "tasks": tasks
+    })
+
+
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    """
+    Get all tasks (API endpoint)
+    """
+    return jsonify(tasks)
+
+
+@app.route('/delete/<int:index>', methods=['DELETE'])
+def delete_task(index):
+    """
+    Delete task using index
+    """
+    if index < 0 or index >= len(tasks):
+        return jsonify({"error": "Invalid index"}), 400
+
+    removed_task = tasks.pop(index)
+
+    return jsonify({
+        "message": f"Deleted: {removed_task}"
+    })
+
+
+# ---------------------------------------
+# MAIN FUNCTION
+# ---------------------------------------
+if __name__ == '__main__':
+    app.run(debug=True)
